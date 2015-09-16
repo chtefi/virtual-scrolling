@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title></title>
+  <script src="https://rawgit.com/chtefi/virtual-scrolling/master/dist/virtual-scrolling.min.js"></script>
+  <style>
+    #virtual-scrolling {
+      overflow: auto;
+    }
+    #virtual-scrolling > div {
+      box-sizing: border-box;
+      height: 20px;
+      padding: 5px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div id="virtual-scrolling">
+  </div>
+
+  <script>
+    var table = document.getElementById('virtual-scrolling');
+    table.style.height = '100px';
+
+    var vs = virtualScrolling({
+      nbItems: 100,
+      rowHeight: 20, // 2000 total
+      viewportHeight: 100,
+    });
+
+    // init
+    getItemsDOM(0, 100);
+
+    table.addEventListener('scroll', function(e) {
+      console.log(e);
+    });
+
+    function getItemsDOM(fromIndex, toIndex) {
+      var str = '';
+      for (var i = fromIndex; i <= toIndex; i++) {
+        str += '<div>Row ' + i + '</div>';
+      }
+      return str;
+    }
+
+  </script>
+</body>
+</html>

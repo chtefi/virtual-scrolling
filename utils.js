@@ -4,9 +4,7 @@ function getHeight(element) {
 
 export function getMaxSupportedCssHeight() {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
-    // fallback to Infinity, just meant to be used in a test environment
-    // throw Error('This function must be called from a browser environment');
-    return Infinity;
+    throw Error('This function must be called from a browser environment only');
   }
 
   // Firefox reports the height back but still renders blank after ~6M px

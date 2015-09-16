@@ -59,9 +59,11 @@ function onAbsoluteScroll(previousState, newScrollTop, layout) {
   };
 }
 
-function getLayout(nbItems, rowHeight, viewportHeight) {
+function getLayout({ nbItems, rowHeight, viewportHeight, maxScrollableHeight }) {
   const virtualHeight = nbItems * rowHeight;
-  const maxScrollableHeight = getMaxSupportedCssHeight();
+  if (!maxScrollableHeight) {
+    maxScrollableHeight = getMaxSupportedCssHeight(); // eslint-disable-line no-param-reassign
+  }
   const scrollableHeight = Math.min(maxScrollableHeight, virtualHeight);
   // TODO(sd): coefficient to optimize, compute it?
   const MAGIC_NUMBER = 100;
@@ -83,9 +85,9 @@ function getLayout(nbItems, rowHeight, viewportHeight) {
   };
 }
 
-export default function virtualScrolling({ nbItems, rowHeight, viewportHeight }) {
+export default function virtualScrolling({ nbItems, rowHeight, viewportHeight, maxScrollableHeight }) {
   // compute the layout once
-  const layout = getLayout(nbItems, rowHeight, viewportHeight);
+  const layout = getLayout({ nbItems, rowHeight, viewportHeight, maxScrollableHeight });
   const INITIAL_STATE = {
     page: 0,
     pageOffset: 0,
@@ -116,5 +118,5 @@ export default function virtualScrolling({ nbItems, rowHeight, viewportHeight })
 // const hasPageChanged = (previousState.page !== newPage);
   // // if the page changed, we reposition the scrollbar (jump)
   // if (hasPageChanged) {
-  //   updateViewportScrollTop(newScrollTop);
+  //   $(layout.viewport).scrollTop(newState.scrollTop);
   // }

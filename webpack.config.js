@@ -29,7 +29,7 @@ module.exports = {
     }],
   },
   output: {
-    library: 'number-converter-alphabet',
+    library: 'virtual-scrolling',
     libraryTarget: 'umd',
   },
   plugins: plugins,
