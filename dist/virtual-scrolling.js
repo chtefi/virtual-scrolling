@@ -4,9 +4,9 @@
 	else if(typeof define === 'function' && define.amd)
 		define([], factory);
 	else if(typeof exports === 'object')
-		exports["number-converter-alphabet"] = factory();
+		exports["virtual-scrolling"] = factory();
 	else
-		root["number-converter-alphabet"] = factory();
+		root["virtual-scrolling"] = factory();
 })(this, function() {
 return /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
@@ -52,78 +52,195 @@ return /******/ (function(modules) { // webpackBootstrap
 /************************************************************************/
 /******/ ([
 /* 0 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	"use strict";
+	'use strict';
 
 	exports.__esModule = true;
-	exports["default"] = virtualScrolling;
-	function onRelativeScroll(state, layout) {
-	  var nextScrollTop = state.scrollTop + state.pageOffset;
-	  var nextPageTop = (state.page + 1) * layout.pageHeight;
-	  var currentPageTop = state.page * layout.pageHeight;
+	exports['default'] = virtualScrolling;
+
+	var _utilsJs = __webpack_require__(1);
+
+	/**
+	 * When an relative scroll occurs, we compute which page we land according to
+	 * the new scrolltop value, or if the page does not change.
+	 *
+	 * @param  {object} previousState
+	 * @param  {number} newScrollTop
+	 * @param  {object} layout
+	 * @return {object}
+	 */
+	function onRelativeScroll(previousState, newScrollTop, layout) {
+	  var nextScrollTop = newScrollTop + previousState.pageOffset;
+	  var nextPageTop = (previousState.page + 1) * layout.pageHeight;
+	  var currentPageTop = previousState.page * layout.pageHeight;
 
 	  var isNextPage = nextScrollTop > nextPageTop;
 	  var isPreviousPage = nextScrollTop < currentPageTop;
 
-	  var page = state.page;
-	  var scrollTop = state.scrollTop;
-
 	  if (isNextPage) {
-	    page++;
-	    scrollTop = state.scrollTop - layout.jumpinessCoefficient;
-	  } else if (isPreviousPage) {
-	    page--;
-	    scrollTop = state.scrollTop + layout.jumpinessCoefficient;
+	    return {
+	      newPage: previousState.page + 1,
+	      newScrollTop: newScrollTop - layout.jumpinessCoeff
+	    };
 	  }
 
+	  if (isPreviousPage) {
+	    return {
+	      newPage: previousState.page - 1,
+	      newScrollTop: newScrollTop + layout.jumpinessCoeff
+	    };
+	  }
+
+	  // same page, no change
 	  return {
-	    page: page,
-	    scrollTop: scrollTop
+	    newPage: previousState.page,
+	    newScrollTop: newScrollTop
 	  };
 	}
 
-	// on absolute, we compute which page we land according to the scrolltop
-	function onAbsoluteScroll(state, layout) {
+	/**
+	 * When an absolute scroll occurs, we compute which page we land according to
+	 * the new scrolltop value.
+	 *
+	 * @param  {object} previousState
+	 * @param  {number} newScrollTop
+	 * @param  {object} layout
+	 * @return {object}
+	 */
+	function onAbsoluteScroll(previousState, newScrollTop, layout) {
 	  var virtualOverflow = layout.virtualHeight - layout.viewportHeight;
 	  var scrollableOverflow = layout.scrollableHeight - layout.viewportHeight;
 	  var overflowRatio = virtualOverflow / scrollableOverflow;
-	  var newPage = Math.floor(state.scrollTop * overflowRatio / layout.pageHeight);
+	  var newPage = Math.floor(newScrollTop * overflowRatio / layout.pageHeight);
 
 	  return {
-	    page: newPage,
-	    scrollTop: state.scrollTop
+	    newPage: newPage,
+	    newScrollTop: newScrollTop
 	  };
 	}
 
-	function virtualScrolling(state, layout, newScrollTop, updateViewportScrollTop) {
-	  // compute the scrollTop delta to know if we are going to do an
-	  // absolute repositioning (page changed) or a relative (continuous)
-	  var scrollDelta = Math.abs(newScrollTop - state.scrollTop);
+	function getLayout(_ref) {
+	  var nbItems = _ref.nbItems;
+	  var rowHeight = _ref.rowHeight;
+	  var viewportHeight = _ref.viewportHeight;
+	  var maxScrollableHeight = _ref.maxScrollableHeight;
 
-	  // update the current state
-	  state.scrollTop = newScrollTop;
-
-	  // according to the delta, update the state using the absolute or
-	  // relative update
-	  var newState = scrollDelta > layout.viewportHeight ? onAbsoluteScroll(state, layout) : onRelativeScroll(state, layout);
-
-	  var hasPageChanged = state.page !== newState.page;
-
-	  // if the page changed, we reposition the scrollbar (jump)
-	  if (hasPageChanged) {
-	    updateViewportScrollTop(newState.scrollTop);
+	  var virtualHeight = nbItems * rowHeight;
+	  if (!maxScrollableHeight) {
+	    maxScrollableHeight = _utilsJs.getMaxSupportedCssHeight(); // eslint-disable-line no-param-reassign
 	  }
+	  var scrollableHeight = Math.min(maxScrollableHeight, virtualHeight);
+	  // TODO(sd): coefficient to optimize, compute it?
+	  var MAGIC_NUMBER = 100;
+	  var pageHeight = scrollableHeight / MAGIC_NUMBER;
 
-	  // merge state
-	  state.page = newState.page;
-	  state.scrollTop = newState.scrollTop;
-	  state.pageOffset = Math.round(state.page * layout.jumpinessCoefficient);
+	  // nbPages will always be >= 1 (Math.ceil(0.0001) === 1)
+	  var nbPages = Math.ceil(virtualHeight / pageHeight);
+	  var jumpinessCoeff = (virtualHeight - scrollableHeight) / (nbPages - 1);
 
-	  return state;
+	  return {
+	    viewportHeight: viewportHeight,
+	    rowHeight: rowHeight,
+	    virtualHeight: virtualHeight,
+	    scrollableHeight: scrollableHeight,
+	    jumpinessCoeff: jumpinessCoeff,
+	    pageHeight: pageHeight,
+	    nbPages: nbPages,
+	    nbItems: nbItems
+	  };
 	}
 
-	module.exports = exports["default"];
+	function virtualScrolling(_ref2) {
+	  var nbItems = _ref2.nbItems;
+	  var rowHeight = _ref2.rowHeight;
+	  var viewportHeight = _ref2.viewportHeight;
+	  var maxScrollableHeight = _ref2.maxScrollableHeight;
+
+	  // compute the layout once
+	  var layout = getLayout({ nbItems: nbItems, rowHeight: rowHeight, viewportHeight: viewportHeight, maxScrollableHeight: maxScrollableHeight });
+	  var INITIAL_STATE = {
+	    page: 0,
+	    pageOffset: 0,
+	    scrollTop: 0
+	  };
+
+	  return function (_ref3) {
+	    var _ref3$previousState = _ref3.previousState;
+	    var previousState = _ref3$previousState === undefined ? INITIAL_STATE : _ref3$previousState;
+	    var scrollTop = _ref3.scrollTop;
+
+	    // compute the scrollTop delta to know if we are going to do an
+	    // absolute repositioning (page changed) or a relative (continuous)
+	    var scrollDelta = Math.abs(scrollTop - previousState.scrollTop);
+
+	    // according to the delta, update the state using the absolute or
+	    // relative update
+
+	    var _ref4 = scrollDelta > layout.viewportHeight ? onAbsoluteScroll(previousState, scrollTop, layout) : onRelativeScroll(previousState, scrollTop, layout);
+
+	    var newPage = _ref4.newPage;
+	    var newScrollTop = _ref4.newScrollTop;
+
+	    // return the updated state
+	    return {
+	      page: newPage,
+	      scrollTop: newScrollTop,
+	      pageOffset: Math.round(newPage * layout.jumpinessCoeff)
+	    };
+	  };
+	}
+
+	// the caller should care of the result:
+	// const hasPageChanged = (previousState.page !== newPage);
+	// // if the page changed, we reposition the scrollbar (jump)
+	// if (hasPageChanged) {
+	//   $(layout.viewport).scrollTop(newState.scrollTop);
+	// }
+	module.exports = exports['default'];
+
+/***/ },
+/* 1 */
+/***/ function(module, exports) {
+
+	'use strict';
+
+	exports.__esModule = true;
+	exports.getMaxSupportedCssHeight = getMaxSupportedCssHeight;
+	function getHeight(element) {
+	  return +window.getComputedStyle(element).getPropertyValue('height');
+	}
+
+	function getMaxSupportedCssHeight() {
+	  if (typeof window === 'undefined' || typeof document === 'undefined') {
+	    throw Error('This function must be called from a browser environment only');
+	  }
+
+	  // Firefox reports the height back but still renders blank after ~6M px
+	  var testUpTo = window.navigator.userAgent.toLowerCase().match(/firefox/) ? 6e6 : 1e9;
+
+	  var div = document.createElement('div');
+	  div.style.display = 'none';
+	  document.body.appendChild(div);
+
+	  var supportedHeight = 1e6;
+	  while (true) {
+	    // eslint-disable-line no-constant-condition
+	    var testHeight = supportedHeight * 2;
+	    div.style.height = testHeight + 'px';
+
+	    // we need to use jQuery because getting the height properly depends
+	    // on some much stuff. Under the hood, it's using window.getComputedStyle()
+	    if (testHeight > testUpTo || getHeight(div) !== testHeight) {
+	      break;
+	    } else {
+	      supportedHeight = testHeight;
+	    }
+	  }
+
+	  document.body.removeChild(div);
+	  return supportedHeight;
+	}
 
 /***/ }
 /******/ ])
