@@ -4,44 +4,82 @@
   <title></title>
   <script src="https://rawgit.com/chtefi/virtual-scrolling/master/dist/virtual-scrolling.min.js"></script>
   <style>
-    #virtual-scrolling {
+    #virtual-scrolling-viewport {
       overflow: auto;
     }
-    #virtual-scrolling > div {
+    #virtual-scrolling-container {
+      position: relative;
+    }
+    #virtual-scrolling-visible-content {
+      position: absolute;
+      width: 100%;
+    }
+    #virtual-scrolling-visible-content > div {
       box-sizing: border-box;
-      height: 20px;
+      height: 30px;
       padding: 5px;
-      text-align: center;
+      text-align: left;
+      border-bottom: 1px solid #ccc;
     }
   </style>
 </head>
 <body>
-  <div id="virtual-scrolling">
+  <div id="virtual-scrolling-viewport">
+    <div id="virtual-scrolling-container">
+      <div id="virtual-scrolling-visible-content">
+      </div>
+    </div>
   </div>
 
   <script>
-    var table = document.getElementById('virtual-scrolling');
-    table.style.height = '100px';
+    /* eslint-disable */
 
-    var vs = virtualScrolling({
-      nbItems: 100,
-      rowHeight: 20, // 2000 total
-      viewportHeight: 100,
+    var NB_ITEMS = 10000000;
+    var ITEM_HEIGHT = 30;
+    var VIEWPORT_HEIGHT = 500;
+
+    var viewport = document.getElementById('virtual-scrolling-viewport');
+    var container = document.getElementById('virtual-scrolling-container');
+    var content = document.getElementById('virtual-scrolling-visible-content');
+
+    // init style
+    container.style.height = (NB_ITEMS * ITEM_HEIGHT) + 'px';
+    viewport.style.height = VIEWPORT_HEIGHT + 'px';    
+
+    // init items    
+    var endIndex = Math.min(NB_ITEMS, Math.ceil(VIEWPORT_HEIGHT / ITEM_HEIGHT)) - 1;  
+    renderItems(0, endIndex);
+
+    // init virtual scrolling
+    var vs = window['virtual-scrolling']({
+      nbItems: NB_ITEMS,
+      rowHeight: ITEM_HEIGHT,
+      viewportHeight: VIEWPORT_HEIGHT,
     });
 
-    // init
-    getItemsDOM(0, 100);
+    // handle scrolling
+    viewport.addEventListener('scroll', function() {
+      var state = vs({ scrollTop: viewport.scrollTop });
+      // console.log(viewport.scrollTop, state.scrollTop, viewport.scrollTop !== state.scrollTop)
 
-    table.addEventListener('scroll', function(e) {
-      console.log(e);
+      // position the content inside the container
+      content.style.top = state.scrollTop + 'px';
+
+      // compute the row startIndex/endIndex
+      var y = state.scrollTop + state.pageOffset;
+      var startIndex = Math.max(0, Math.floor(y / ITEM_HEIGHT));
+      var endIndex = Math.min(NB_ITEMS, Math.ceil((y + VIEWPORT_HEIGHT) / ITEM_HEIGHT)) - 1;  
+
+      renderItems(startIndex, endIndex);
     });
 
-    function getItemsDOM(fromIndex, toIndex) {
+    // renders the current visible rows
+    function renderItems(fromIndex, toIndex) {
       var str = '';
       for (var i = fromIndex; i <= toIndex; i++) {
-        str += '<div>Row ' + i + '</div>';
+        str += '<div>Row ' + (i+1) + '</div>';
       }
-      return str;
+      content.innerHTML = str;
     }
 
   </script>
