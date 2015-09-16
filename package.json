@@ -2,9 +2,14 @@
   "name": "virtual-scrolling",
   "version": "0.0.1",
   "description": "",
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "clean": "rimraf lib dist",
+    "build": "babel index.js --out-dir lib",
+    "build:umd": "webpack index.js dist/virtual-scrolling.js && set NODE_ENV=production&& webpack index.js dist/virtual-scrolling.min.js",
+    "lint": "eslint index.js",
+    "test": "_mocha --compilers js:babel/register",
+    "prepublish": "npm run lint && npm run test && npm run clean && npm run build && npm run build:umd"
   },
   "repository": {
     "type": "git",
@@ -15,5 +20,16 @@
   "bugs": {
     "url": "https://github.com/chtefi/virtual-scrolling/issues"
   },
-  "homepage": "https://github.com/chtefi/virtual-scrolling#readme"
+  "homepage": "https://github.com/chtefi/virtual-scrolling#readme",
+  "devDependencies": {
+    "babel": "^5.8.23",
+    "babel-core": "^5.8.24",
+    "babel-loader": "^5.3.2",
+    "chai": "^3.2.0",
+    "eslint": "^1.4.1",
+    "eslint-config-airbnb": "0.0.8",
+    "mocha": "^2.3.2",
+    "rimraf": "^2.4.3",
+    "webpack": "^1.12.1"
+  }
 }
