@@ -76,7 +76,7 @@ function getLayout(nbItems, rowHeight, viewportHeight) {
     rowHeight: rowHeight,
     virtualHeight: virtualHeight,
     scrollableHeight: scrollableHeight,
-    jumpinessCoefficient: jumpinessCoeff,
+    jumpinessCoeff: jumpinessCoeff,
     pageHeight: pageHeight,
     nbPages: nbPages,
     nbItems: nbItems,
@@ -107,7 +107,7 @@ export default function virtualScrolling({ nbItems, rowHeight, viewportHeight })
     return {
       page: newPage,
       scrollTop: newScrollTop,
-      pageOffset: Math.round(newPage * layout.jumpinessCoefficient),
+      pageOffset: Math.round(newPage * layout.jumpinessCoeff),
     };
   };
 }
