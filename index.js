@@ -1,3 +1,7 @@
+// TODO
+// - Remove jquery $, add lodash dependency (extend?)
+// - Remove .scrolltop dep, callback a method for the caller to deal with it ? We wanna stay pure
+
  var VIRTUAL_SCROLLING_HELPER = {
 
         updateStateAfterScrolling: function(state, layout, newScrollTop) {
