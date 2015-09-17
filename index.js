@@ -119,3 +119,4 @@ export default function virtualScrolling({ nbItems, rowHeight, viewportHeight, m
 
   return fn;
 }
+
