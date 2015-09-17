@@ -24,6 +24,7 @@
   </style>
 </head>
 <body>
+
   <div id="virtual-scrolling-viewport">
     <div id="virtual-scrolling-container">
       <div id="virtual-scrolling-visible-content">
@@ -58,20 +59,36 @@
     });
 
     // handle scrolling
-    viewport.addEventListener('scroll', function() {
-      var state = vs({ scrollTop: viewport.scrollTop });
-      // console.log(viewport.scrollTop, state.scrollTop, viewport.scrollTop !== state.scrollTop)
+    var previousState = {
+      page: 0,
+      pageOffset: 0,
+      scrollTop: 0
+    };
+    viewport.addEventListener('scroll', raf(function() {
+      console.log('called with scrollTop', viewport.scrollTop, 'old', previousState.scrollTop);
+      var newState = vs({
+        previousState: previousState,
+        scrollTop: viewport.scrollTop
+      });
 
       // position the content inside the container
-      content.style.top = state.scrollTop + 'px';
+      content.style.top = newState.scrollTop + 'px';
 
-      // compute the row startIndex/endIndex
-      var y = state.scrollTop + state.pageOffset;
+      // reposition the scroll if it has been shifted (paging changed)
+      if (previousState.page !== newState.page) {
+        console.log('Fix from', viewport.scrollTop, 'to', newState.scrollTop, 'page', newState.page);
+        viewport.scrollTop = newState.scrollTop;        
+      }
+
+      // render the rows
+      var y = newState.scrollTop + newState.pageOffset;
       var startIndex = Math.max(0, Math.floor(y / ITEM_HEIGHT));
       var endIndex = Math.min(NB_ITEMS, Math.ceil((y + VIEWPORT_HEIGHT) / ITEM_HEIGHT)) - 1;  
-
       renderItems(startIndex, endIndex);
-    });
+      console.log('From', startIndex, 'to', endIndex);
+
+      previousState = newState;
+    }));
 
     // renders the current visible rows
     function renderItems(fromIndex, toIndex) {
@@ -80,6 +97,19 @@
         str += '<div>Row ' + (i+1) + '</div>';
       }
       content.innerHTML = str;
+    }
+
+    function raf(callback) {
+      var called = false;
+      return function() {
+        if (!called) {
+          called = true;
+          requestAnimationFrame(function() {
+            callback();
+            called = false;
+          });
+        }
+      }
     }
 
   </script>

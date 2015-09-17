@@ -20,14 +20,14 @@ function onRelativeScroll(previousState, newScrollTop, layout) {
   if (isNextPage) {
     return {
       newPage: previousState.page + 1,
-      newScrollTop: newScrollTop - layout.jumpinessCoeff,
+      newScrollTop: newScrollTop - layout.onePageOffset,
     };
   }
 
   if (isPreviousPage) {
     return {
       newPage: previousState.page - 1,
-      newScrollTop: newScrollTop + layout.jumpinessCoeff,
+      newScrollTop: newScrollTop + layout.onePageOffset,
     };
   }
 
@@ -71,14 +71,14 @@ function getLayout({ nbItems, rowHeight, viewportHeight, maxScrollableHeight }) 
 
   // nbPages will always be >= 1 (Math.ceil(0.0001) === 1)
   const nbPages = Math.ceil(virtualHeight / pageHeight);
-  const jumpinessCoeff = (virtualHeight - scrollableHeight) / (nbPages - 1);
+  const onePageOffset = (virtualHeight - scrollableHeight) / (nbPages - 1);
 
   return {
     viewportHeight: viewportHeight,
     rowHeight: rowHeight,
     virtualHeight: virtualHeight,
     scrollableHeight: scrollableHeight,
-    jumpinessCoeff: jumpinessCoeff,
+    onePageOffset: onePageOffset,
     pageHeight: pageHeight,
     nbPages: nbPages,
     nbItems: nbItems,
@@ -109,14 +109,7 @@ export default function virtualScrolling({ nbItems, rowHeight, viewportHeight, m
     return {
       page: newPage,
       scrollTop: newScrollTop,
-      pageOffset: Math.round(newPage * layout.jumpinessCoeff),
+      pageOffset: Math.round(newPage * layout.onePageOffset),
     };
   };
 }
-
-// the caller should care of the result:
-// const hasPageChanged = (previousState.page !== newPage);
-  // // if the page changed, we reposition the scrollbar (jump)
-  // if (hasPageChanged) {
-  //   $(layout.viewport).scrollTop(newState.scrollTop);
-  // }
