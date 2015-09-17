@@ -14,13 +14,15 @@ function onRelativeScroll(previousState, newScrollTop, layout) {
   const nextPageTop = (previousState.page + 1) * layout.pageHeight;
   const currentPageTop = previousState.page * layout.pageHeight;
 
-  const isNextPage = (nextScrollTop > nextPageTop);
+  console.log(newScrollTop, nextScrollTop, nextPageTop, currentPageTop);
+
+  const isNextPage = (nextScrollTop >= nextPageTop);
   const isPreviousPage = (nextScrollTop < currentPageTop);
 
   if (isNextPage) {
     return {
       newPage: previousState.page + 1,
-      newScrollTop: newScrollTop - layout.onePageOffset,
+      newScrollTop: newScrollTop,
     };
   }
 
@@ -48,7 +50,7 @@ function onRelativeScroll(previousState, newScrollTop, layout) {
  * @return {object}
  */
 function onAbsoluteScroll(previousState, newScrollTop, layout) {
-  const virtualOverflow = layout.virtualHeight - layout.viewportHeight;
+  const virtualOverflow = layout.totalItemsHeight - layout.viewportHeight;
   const scrollableOverflow = layout.scrollableHeight - layout.viewportHeight;
   const overflowRatio = virtualOverflow / scrollableOverflow;
   const newPage = Math.floor(newScrollTop * overflowRatio / layout.pageHeight);
@@ -59,29 +61,26 @@ function onAbsoluteScroll(previousState, newScrollTop, layout) {
   };
 }
 
-function getLayout({ nbItems, rowHeight, viewportHeight, maxScrollableHeight }) {
-  const virtualHeight = nbItems * rowHeight;
-  if (!maxScrollableHeight) {
-    maxScrollableHeight = getMaxSupportedCssHeight(); // eslint-disable-line no-param-reassign
-  }
-  const scrollableHeight = Math.min(maxScrollableHeight, virtualHeight);
-  // TODO(sd): coefficient to optimize, compute it?
-  const MAGIC_NUMBER = 100;
-  const pageHeight = scrollableHeight / MAGIC_NUMBER;
+function getLayout({ nbItems, rowHeight, viewportHeight, maxScrollableHeight = getMaxSupportedCssHeight() }) {
+  const totalItemsHeight = nbItems * rowHeight;
+  const scrollableHeight = Math.min(maxScrollableHeight, totalItemsHeight);
 
   // nbPages will always be >= 1 (Math.ceil(0.0001) === 1)
-  const nbPages = Math.ceil(virtualHeight / pageHeight);
-  const onePageOffset = (virtualHeight - scrollableHeight) / (nbPages - 1);
+  const nbPages = Math.ceil(totalItemsHeight / scrollableHeight);
+  const pageHeight = scrollableHeight / nbPages;
+
+  // TODO(sd): need ?
+  const onePageOffset = (totalItemsHeight - scrollableHeight) / (nbPages - 1);
 
   return {
-    viewportHeight: viewportHeight,
-    rowHeight: rowHeight,
-    virtualHeight: virtualHeight,
-    scrollableHeight: scrollableHeight,
-    onePageOffset: onePageOffset,
-    pageHeight: pageHeight,
-    nbPages: nbPages,
-    nbItems: nbItems,
+    viewportHeight,
+    rowHeight,
+    pageHeight,
+    totalItemsHeight,
+    scrollableHeight,
+    onePageOffset,
+    nbPages,
+    nbItems,
   };
 }
 
@@ -94,7 +93,10 @@ export default function virtualScrolling({ nbItems, rowHeight, viewportHeight, m
     scrollTop: 0,
   };
 
-  return ({ previousState = INITIAL_STATE, scrollTop }) => {
+  const fn = ({ previousState = INITIAL_STATE, scrollTop }) => {
+    // limit the scrollTop value
+    scrollTop = Math.min(Math.max(scrollTop, 0), layout.scrollableHeight); // eslint-disable-line no-param-reassign
+
     // compute the scrollTop delta to know if we are going to do an
     // absolute repositioning (page changed) or a relative (continuous)
     const scrollDelta = Math.abs(scrollTop - previousState.scrollTop);
@@ -112,4 +114,8 @@ export default function virtualScrolling({ nbItems, rowHeight, viewportHeight, m
       pageOffset: Math.round(newPage * layout.onePageOffset),
     };
   };
+
+  fn.layout = layout;
+
+  return fn;
 }
