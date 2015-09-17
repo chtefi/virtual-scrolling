@@ -10,19 +10,19 @@ export function getMaxSupportedCssHeight() {
   // Firefox reports the height back but still renders blank after ~6M px
   const testUpTo = window.navigator.userAgent.toLowerCase().match(/firefox/)
                     ? 6e6
-                    : 1e9;
+                    : 1e9; // 1MM ! Chrome is at 35M so this limit is fine.
 
   const div = document.createElement('div');
   div.style.display = 'none';
   document.body.appendChild(div);
 
   let supportedHeight = 1e6;
+  // TODO(sd) : refactor this condition
   while (true) { // eslint-disable-line no-constant-condition
     const testHeight = supportedHeight * 2;
     div.style.height = testHeight + 'px';
 
-    // we need to use jQuery because getting the height properly depends
-    // on some much stuff. Under the hood, it's using window.getComputedStyle()
+    // if we detect a difference, it means the browser reached its limit
     if (testHeight > testUpTo || getHeight(div) !== testHeight) {
       break;
     } else {
