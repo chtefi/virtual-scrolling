@@ -57,9 +57,21 @@ return /******/ (function(modules) { // webpackBootstrap
 	'use strict';
 
 	exports.__esModule = true;
+	exports.scale = scale;
 	exports['default'] = virtualScrolling;
 
 	var _utilsJs = __webpack_require__(1);
+
+	function scale(_ref) {
+	  var input = _ref.input;
+	  var output = _ref.output;
+
+	  var inputDelta = input[1] - input[0];
+	  var outputDelta = output[1] - output[0];
+	  return function (value) {
+	    return (value - input[0]) / inputDelta * outputDelta + output[0];
+	  };
+	}
 
 	/**
 	 * When an relative scroll occurs, we compute which page we land according to
@@ -75,20 +87,20 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var nextPageTop = (previousState.page + 1) * layout.pageHeight;
 	  var currentPageTop = previousState.page * layout.pageHeight;
 
-	  var isNextPage = nextScrollTop > nextPageTop;
+	  var isNextPage = nextScrollTop >= nextPageTop;
 	  var isPreviousPage = nextScrollTop < currentPageTop;
 
 	  if (isNextPage) {
 	    return {
 	      newPage: previousState.page + 1,
-	      newScrollTop: newScrollTop - layout.jumpinessCoeff
+	      newScrollTop: newScrollTop
 	    };
 	  }
 
 	  if (isPreviousPage) {
 	    return {
 	      newPage: previousState.page - 1,
-	      newScrollTop: newScrollTop + layout.jumpinessCoeff
+	      newScrollTop: newScrollTop + layout.onePageOffset
 	    };
 	  }
 
@@ -109,10 +121,24 @@ return /******/ (function(modules) { // webpackBootstrap
 	 * @return {object}
 	 */
 	function onAbsoluteScroll(previousState, newScrollTop, layout) {
-	  var virtualOverflow = layout.virtualHeight - layout.viewportHeight;
-	  var scrollableOverflow = layout.scrollableHeight - layout.viewportHeight;
-	  var overflowRatio = virtualOverflow / scrollableOverflow;
-	  var newPage = Math.floor(newScrollTop * overflowRatio / layout.pageHeight);
+	  var scrollableToVirtual = scale({
+	    input: [0, layout.scrollableHeight],
+	    output: [0, layout.totalItemsHeight]
+	  });
+
+	  var scrollableToPage = scale({
+	    input: [0, layout.scrollableHeight],
+	    output: [0, layout.maxPage]
+	  });
+
+	  var newPage = scrollableToPage(newScrollTop);
+
+	  // there are 10 pages ?
+	  // the maxPage is something like 9.90 ? (the maxPage is the max start value
+	  // you can have when you go at 100% of the scrollbar)
+	  //
+	  // therefore, we are at the page: 9.90*0.34 = 3,366
+	  // const newPage = layout.maxPage * newScrollTopRatio;
 
 	  return {
 	    newPage: newPage,
@@ -120,42 +146,74 @@ return /******/ (function(modules) { // webpackBootstrap
 	  };
 	}
 
-	function getLayout(_ref) {
-	  var nbItems = _ref.nbItems;
-	  var rowHeight = _ref.rowHeight;
-	  var viewportHeight = _ref.viewportHeight;
-	  var maxScrollableHeight = _ref.maxScrollableHeight;
+	function getLayout(_ref2) {
+	  var nbItems = _ref2.nbItems;
+	  var rowHeight = _ref2.rowHeight;
+	  var viewportHeight = _ref2.viewportHeight;
+	  var _ref2$maxScrollableHeight = _ref2.maxScrollableHeight;
+	  var maxScrollableHeight = _ref2$maxScrollableHeight === undefined ? _utilsJs.getMaxSupportedCssHeight() : _ref2$maxScrollableHeight;
 
-	  var virtualHeight = nbItems * rowHeight;
-	  if (!maxScrollableHeight) {
-	    maxScrollableHeight = _utilsJs.getMaxSupportedCssHeight(); // eslint-disable-line no-param-reassign
-	  }
-	  var scrollableHeight = Math.min(maxScrollableHeight, virtualHeight);
-	  // TODO(sd): coefficient to optimize, compute it?
-	  var MAGIC_NUMBER = 100;
-	  var pageHeight = scrollableHeight / MAGIC_NUMBER;
+	  var totalItemsHeight = nbItems * rowHeight;
+	  var scrollableHeight = Math.min(maxScrollableHeight, totalItemsHeight);
 
 	  // nbPages will always be >= 1 (Math.ceil(0.0001) === 1)
-	  var nbPages = Math.ceil(virtualHeight / pageHeight);
-	  var jumpinessCoeff = (virtualHeight - scrollableHeight) / (nbPages - 1);
+	  var nbPages = Math.ceil(totalItemsHeight / scrollableHeight);
+	  var pageHeight = scrollableHeight / nbPages;
+
+	  // One page examples
+
+	  // total: 1000 / viewport: 500 / scrollableMax: 10000 / = 1 page
+	  // 100% in scroll means going to the page...
+	  // 100% - viewport / total
+	  // 1 - 500 / 1000 = 0.50
+	  // maxPage = 0.50
+
+	  // total: 1000 / viewport: 100 / scrollableMax: 10000 / = 1 page
+	  // 100% in scroll means going to the page...
+	  // 100% - viewport / total
+	  // 1 - 100 / 1000 = 0.90
+	  // maxPage = 0.90
+
+	  // Multiple page examples
+
+	  // total: 1000 / viewport: 100 / scrollableMax: 100 / = 10 pages
+	  // 100% in scroll means going to the page...
+	  // 100% - viewport / total
+	  // 10 * (1 - 100 / 1000) = 9.00
+
+	  // therefore...
+	  // maxPage = nbPages * (1 - viewportHeight / totalHeight)
+
+	  // const virtualOverflow = totalItemsHeight - viewportHeight;
+	  // const scrollableOverflow = scrollableHeight - viewportHeight;
+	  // const overflowRatio = virtualOverflow / scrollableOverflow;
+	  var maxPage = nbPages * (1 - viewportHeight / totalItemsHeight);
+
+	  // TODO(sd): need ?
+	  var onePageOffset = (totalItemsHeight - scrollableHeight) / (nbPages - 1);
+
+	  //const totalItemsScale = scale({ input: [ 0, scrollableHeight ], output: [ 0, totalItemsHeight ] });
+	  //const absolutePageScale = scale({ input: [ 0, viewportHeight ], output: [ 0, nbPages ] });
+	  //console.log(maxPage, absolutePageScale())
 
 	  return {
 	    viewportHeight: viewportHeight,
 	    rowHeight: rowHeight,
-	    virtualHeight: virtualHeight,
-	    scrollableHeight: scrollableHeight,
-	    jumpinessCoeff: jumpinessCoeff,
 	    pageHeight: pageHeight,
+	    nbItems: nbItems,
+	    totalItemsHeight: totalItemsHeight,
+	    scrollableHeight: scrollableHeight,
+	    onePageOffset: onePageOffset,
 	    nbPages: nbPages,
-	    nbItems: nbItems
+	    maxPage: maxPage
 	  };
 	}
 
-	function virtualScrolling(_ref2) {
-	  var nbItems = _ref2.nbItems;
-	  var rowHeight = _ref2.rowHeight;
-	  var viewportHeight = _ref2.viewportHeight;
-	  var maxScrollableHeight = _ref2.maxScrollableHeight;
+	function virtualScrolling(_ref3) {
+	  var nbItems = _ref3.nbItems;
+	  var rowHeight = _ref3.rowHeight;
+	  var viewportHeight = _ref3.viewportHeight;
+	  var maxScrollableHeight = _ref3.maxScrollableHeight;
 
 	  // compute the layout once
 	  var layout = getLayout({ nbItems: nbItems, rowHeight: rowHeight, viewportHeight: viewportHeight, maxScrollableHeight: maxScrollableHeight });
@@ -165,10 +223,13 @@ return /******/ (function(modules) { // webpackBootstrap
 	    scrollTop: 0
 	  };
 
-	  return function (_ref3) {
-	    var _ref3$previousState = _ref3.previousState;
-	    var previousState = _ref3$previousState === undefined ? INITIAL_STATE : _ref3$previousState;
-	    var scrollTop = _ref3.scrollTop;
+	  var fn = function fn(_ref4) {
+	    var _ref4$previousState = _ref4.previousState;
+	    var previousState = _ref4$previousState === undefined ? INITIAL_STATE : _ref4$previousState;
+	    var scrollTop = _ref4.scrollTop;
+
+	    // limit the scrollTop value
+	    scrollTop = Math.min(Math.max(scrollTop, 0), layout.scrollableHeight); // eslint-disable-line no-param-reassign
 
 	    // compute the scrollTop delta to know if we are going to do an
 	    // absolute repositioning (page changed) or a relative (continuous)
@@ -177,27 +238,23 @@ return /******/ (function(modules) { // webpackBootstrap
 	    // according to the delta, update the state using the absolute or
 	    // relative update
 
-	    var _ref4 = scrollDelta > layout.viewportHeight ? onAbsoluteScroll(previousState, scrollTop, layout) : onRelativeScroll(previousState, scrollTop, layout);
+	    var _ref5 = scrollDelta > layout.viewportHeight ? onAbsoluteScroll(previousState, scrollTop, layout) : onRelativeScroll(previousState, scrollTop, layout);
 
-	    var newPage = _ref4.newPage;
-	    var newScrollTop = _ref4.newScrollTop;
+	    var newPage = _ref5.newPage;
+	    var newScrollTop = _ref5.newScrollTop;
 
 	    // return the updated state
 	    return {
 	      page: newPage,
 	      scrollTop: newScrollTop,
-	      pageOffset: Math.round(newPage * layout.jumpinessCoeff)
+	      pageOffset: Math.round(newPage * layout.onePageOffset)
 	    };
 	  };
-	}
 
-	// the caller should care of the result:
-	// const hasPageChanged = (previousState.page !== newPage);
-	// // if the page changed, we reposition the scrollbar (jump)
-	// if (hasPageChanged) {
-	//   $(layout.viewport).scrollTop(newState.scrollTop);
-	// }
-	module.exports = exports['default'];
+	  fn.layout = layout;
+
+	  return fn;
+	}
 
 /***/ },
 /* 1 */
@@ -217,20 +274,20 @@ return /******/ (function(modules) { // webpackBootstrap
 	  }
 
 	  // Firefox reports the height back but still renders blank after ~6M px
-	  var testUpTo = window.navigator.userAgent.toLowerCase().match(/firefox/) ? 6e6 : 1e9;
+	  var testUpTo = window.navigator.userAgent.toLowerCase().match(/firefox/) ? 6e6 : 1e9; // 1MM ! Chrome is at 35M so this limit is fine.
 
 	  var div = document.createElement('div');
 	  div.style.display = 'none';
 	  document.body.appendChild(div);
 
 	  var supportedHeight = 1e6;
+	  // TODO(sd) : refactor this condition
 	  while (true) {
 	    // eslint-disable-line no-constant-condition
 	    var testHeight = supportedHeight * 2;
 	    div.style.height = testHeight + 'px';
 
-	    // we need to use jQuery because getting the height properly depends
-	    // on some much stuff. Under the hood, it's using window.getComputedStyle()
+	    // if we detect a difference, it means the browser reached its limit
 	    if (testHeight > testUpTo || getHeight(div) !== testHeight) {
 	      break;
 	    } else {

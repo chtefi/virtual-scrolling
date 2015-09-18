@@ -1,5 +1,11 @@
 import { getMaxSupportedCssHeight } from './utils.js';
 
+export function scale({ input, output }) {
+  const inputDelta = input[1] - input[0];
+  const outputDelta = output[1] - output[0];
+  return (value) => ((value - input[0]) / inputDelta) * outputDelta + output[0];
+}
+
 /**
  * When an relative scroll occurs, we compute which page we land according to
  * the new scrolltop value, or if the page does not change.
@@ -13,8 +19,6 @@ function onRelativeScroll(previousState, newScrollTop, layout) {
   const nextScrollTop = newScrollTop + previousState.pageOffset;
   const nextPageTop = (previousState.page + 1) * layout.pageHeight;
   const currentPageTop = previousState.page * layout.pageHeight;
-
-  console.log(newScrollTop, nextScrollTop, nextPageTop, currentPageTop);
 
   const isNextPage = (nextScrollTop >= nextPageTop);
   const isPreviousPage = (nextScrollTop < currentPageTop);
@@ -50,10 +54,24 @@ function onRelativeScroll(previousState, newScrollTop, layout) {
  * @return {object}
  */
 function onAbsoluteScroll(previousState, newScrollTop, layout) {
-  const virtualOverflow = layout.totalItemsHeight - layout.viewportHeight;
-  const scrollableOverflow = layout.scrollableHeight - layout.viewportHeight;
-  const overflowRatio = virtualOverflow / scrollableOverflow;
-  const newPage = Math.floor(newScrollTop * overflowRatio / layout.pageHeight);
+  const scrollableToVirtual = scale({
+    input: [ 0, layout.scrollableHeight ],
+    output: [ 0, layout.totalItemsHeight ],
+  });
+
+  const scrollableToPage = scale({
+    input: [ 0, layout.scrollableHeight ],
+    output: [ 0, layout.maxPage ],
+  });
+
+  const newPage = scrollableToPage(newScrollTop);
+
+  // there are 10 pages ?
+  // the maxPage is something like 9.90 ? (the maxPage is the max start value
+  // you can have when you go at 100% of the scrollbar)
+  //
+  // therefore, we are at the page: 9.90*0.34 = 3,366
+  // const newPage = layout.maxPage * newScrollTopRatio;
 
   return {
     newPage,
@@ -69,18 +87,52 @@ function getLayout({ nbItems, rowHeight, viewportHeight, maxScrollableHeight = g
   const nbPages = Math.ceil(totalItemsHeight / scrollableHeight);
   const pageHeight = scrollableHeight / nbPages;
 
+  // One page examples
+
+  // total: 1000 / viewport: 500 / scrollableMax: 10000 / = 1 page
+  // 100% in scroll means going to the page...
+  // 100% - viewport / total
+  // 1 - 500 / 1000 = 0.50
+  // maxPage = 0.50
+
+  // total: 1000 / viewport: 100 / scrollableMax: 10000 / = 1 page
+  // 100% in scroll means going to the page...
+  // 100% - viewport / total
+  // 1 - 100 / 1000 = 0.90
+  // maxPage = 0.90
+
+  // Multiple page examples
+
+  // total: 1000 / viewport: 100 / scrollableMax: 100 / = 10 pages
+  // 100% in scroll means going to the page...
+  // 100% - viewport / total
+  // 10 * (1 - 100 / 1000) = 9.00
+
+  // therefore...
+  // maxPage = nbPages * (1 - viewportHeight / totalHeight)
+
+  // const virtualOverflow = totalItemsHeight - viewportHeight;
+  // const scrollableOverflow = scrollableHeight - viewportHeight;
+  // const overflowRatio = virtualOverflow / scrollableOverflow;
+  const maxPage = nbPages * (1 - viewportHeight / totalItemsHeight);
+
   // TODO(sd): need ?
   const onePageOffset = (totalItemsHeight - scrollableHeight) / (nbPages - 1);
+
+  //const totalItemsScale = scale({ input: [ 0, scrollableHeight ], output: [ 0, totalItemsHeight ] });
+  //const absolutePageScale = scale({ input: [ 0, viewportHeight ], output: [ 0, nbPages ] });
+  //console.log(maxPage, absolutePageScale())
 
   return {
     viewportHeight,
     rowHeight,
     pageHeight,
+    nbItems,
     totalItemsHeight,
     scrollableHeight,
     onePageOffset,
     nbPages,
-    nbItems,
+    maxPage,
   };
 }
 
