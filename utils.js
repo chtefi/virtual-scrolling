@@ -1,5 +1,6 @@
 function getHeight(element) {
-  return +window.getComputedStyle(element).getPropertyValue('height');
+  // remove 'px' at the end then cast to integer
+  return +window.getComputedStyle(element).getPropertyValue('height').slice(0, -2);
 }
 
 export function getMaxSupportedCssHeight() {

@@ -22,15 +22,13 @@ describe('the scale function', () => {
   });
 });
 
-describe('the virtual scrolling', function() { // eslint-disable-line func-names
-  this.timeout(100); // test should be fast otherwise there is a infinite loop!
+let vs;
+let state;
+let s;
 
-  let vs;
-  let state;
-  let s;
+// ---------------------------------------------------------------------------
 
-  // ---------------------------------------------------------------------------
-
+describe('the virtual scrolling', () => {
   it('should compute the right number of pages', () => {
     vs = virtualScrolling({
       nbItems: 1,
@@ -64,10 +62,12 @@ describe('the virtual scrolling', function() { // eslint-disable-line func-names
     });
     expect(vs.layout.nbPages).to.be.equal(10);
   });
+});
 
-  // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
-  it('should behave correctly with absolute scrolling with one page', () => {
+describe('the virtual scrolling with absolute scrolling', () => {
+  it('should behave correctly with one page', () => {
     vs = virtualScrolling({
       nbItems: 100,
       rowHeight: 20, // 2000 total
@@ -88,9 +88,7 @@ describe('the virtual scrolling', function() { // eslint-disable-line func-names
     expect(state.page).to.be.equal(s(2000 - 20) / 2); // half of the max
   });
 
-  // ---------------------------------------------------------------------------
-
-  it('should behave correctly with absolute scrolling with multiple pages', () => {
+  it('should behave correctly with multiple pages', () => {
     vs = virtualScrolling({
       nbItems: 100,
       rowHeight: 20, // 2000 total
@@ -116,49 +114,56 @@ describe('the virtual scrolling', function() { // eslint-disable-line func-names
     expect(state.scrollTop).to.be.equal(300);
     expect(state.page).to.be.equal(s(2000 - 100)); // last item visible
   });
+});
 
-  // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
 
-  it.skip('should behave correctly with absolute scrolling at 100% (end of data)', () => {
+describe('the virtual scrolling with relative scrolling', () => {
+  it('should behave correctly going forwards with one page', () => {
     vs = virtualScrolling({
       nbItems: 100,
       rowHeight: 20, // 2000 total
       maxScrollableHeight: 10000,
-      viewportHeight: 20,
+      viewportHeight: 100,
     });
 
-    state = vs({ scrollTop: 2000 });
-    expect(state.page).to.be.equal(0); // should be 0.xx
-    expect(state.startOffset).to.be.equal(99 * 20);
-
-    vs = virtualScrolling({
-      nbItems: 100,
-      rowHeight: 20, // 2000 total
-      maxScrollableHeight: 200, // 10 times less
-      viewportHeight: 20,
+    state = vs({ scrollTop: 0 }); // min
+    const scrollableToPage = scale({
+      input: [ 0, 2000 ],
+      output: [ 0, vs.layout.maxPage ],
     });
 
-    state = vs({ scrollTop: 200 });
-    expect(state.page).to.be.equal(9);
-    expect(state.startOffset).to.be.equal(99 * 20);
-  });
-
-  it.skip('should work with tiny relative scrolling with one page', () => {
-    vs = virtualScrolling({
-      nbItems: 100,
-      rowHeight: 20, // 2000 total
-      maxScrollableHeight: 10000,
-      viewportHeight: 20,
-    });
-
+    // scroll from the beginning to the end with a step of 10 (relative)
     for (let i = 0; i < 2000; i += 10) {
       state = vs({ previousState: state, scrollTop: i });
       expect(state.scrollTop).to.be.equal(i);
-      expect(state.page).to.be.equal(0);
+      expect(state.page).to.be.equal(scrollableToPage(i));
     }
   });
 
-  it.skip('should work with tiny relative scrolling with multiple pages', () => {
+  it('should behave correctly going backwards with one page', () => {
+    vs = virtualScrolling({
+      nbItems: 100,
+      rowHeight: 20, // 2000 total
+      maxScrollableHeight: 10000,
+      viewportHeight: 100,
+    });
+
+    state = vs({ scrollTop: 2000 }); // max
+    const scrollableToPage = scale({
+      input: [ 0, 2000 ],
+      output: [ 0, vs.layout.maxPage ],
+    });
+
+    // scroll from the beginning to the end with a step of 10 (relative)
+    for (let i = 2000; i >= 0; i -= 10) {
+      state = vs({ previousState: state, scrollTop: i });
+      expect(state.scrollTop).to.be.equal(i);
+      expect(state.page).to.be.equal(scrollableToPage(i));
+    }
+  });
+
+  it.skip('should behave correctly going forwards with multiple pages', () => {
     vs = virtualScrolling({
       nbItems: 100,
       rowHeight: 20, // 2000 total
@@ -173,6 +178,20 @@ describe('the virtual scrolling', function() { // eslint-disable-line func-names
     }
   });
 
+  it.skip('should behave correctly going backwards with multiple pages', () => {
+    vs = virtualScrolling({
+      nbItems: 100,
+      rowHeight: 20, // 2000 total
+      maxScrollableHeight: 1000,
+      viewportHeight: 20,
+    });
+
+    for (let i = 0; i < 1000; i += 10) {
+      state = vs({ previousState: state, scrollTop: i });
+      expect(state.scrollTop).to.be.equal(i);
+      expect(state.page).to.be.equal(Math.floor(i / 500));
+    }
+  });
 });
 
 

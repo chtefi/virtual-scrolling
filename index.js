@@ -23,6 +23,11 @@ function onRelativeScroll(previousState, newScrollTop, layout) {
   const isNextPage = (nextScrollTop >= nextPageTop);
   const isPreviousPage = (nextScrollTop < currentPageTop);
 
+  const scrollableToPage = scale({
+    input: [ 0, layout.scrollableHeight ],
+    output: [ 0, layout.maxPage ],
+  });
+
   if (isNextPage) {
     return {
       newPage: previousState.page + 1,
@@ -39,7 +44,7 @@ function onRelativeScroll(previousState, newScrollTop, layout) {
 
   // same page, no change
   return {
-    newPage: previousState.page,
+    newPage: scrollableToPage(newScrollTop),
     newScrollTop: newScrollTop,
   };
 }
@@ -54,11 +59,6 @@ function onRelativeScroll(previousState, newScrollTop, layout) {
  * @return {object}
  */
 function onAbsoluteScroll(previousState, newScrollTop, layout) {
-  const scrollableToVirtual = scale({
-    input: [ 0, layout.scrollableHeight ],
-    output: [ 0, layout.totalItemsHeight ],
-  });
-
   const scrollableToPage = scale({
     input: [ 0, layout.scrollableHeight ],
     output: [ 0, layout.maxPage ],
@@ -67,7 +67,7 @@ function onAbsoluteScroll(previousState, newScrollTop, layout) {
   const newPage = scrollableToPage(newScrollTop);
 
   // there are 10 pages ?
-  // the maxPage is something like 9.90 ? (the maxPage is the max start value
+  // the maxPage is something like 9.90 ? (the maxPage is the _start_ page value
   // you can have when you go at 100% of the scrollbar)
   //
   // therefore, we are at the page: 9.90*0.34 = 3,366

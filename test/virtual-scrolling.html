@@ -2,10 +2,11 @@
 <html>
 <head>
   <title></title>
-  <script src="https://rawgit.com/chtefi/virtual-scrolling/master/dist/virtual-scrolling.min.js"></script>
   <style>
     #virtual-scrolling-viewport {
       overflow: auto;
+      width: 300px;
+      border: 1px solid rgba(0,0,0,0.2);
     }
     #virtual-scrolling-container {
       position: relative;
@@ -16,7 +17,6 @@
     }
     #virtual-scrolling-visible-content > div {
       box-sizing: border-box;
-      height: 30px;
       padding: 5px;
       text-align: left;
       border-bottom: 1px solid #ccc;
@@ -32,10 +32,11 @@
     </div>
   </div>
 
+  <script src="../dist/virtual-scrolling.js"></script>
   <script>
     /* eslint-disable */
 
-    var NB_ITEMS = 10000000;
+    var NB_ITEMS = 100000;
     var ITEM_HEIGHT = 30;
     var VIEWPORT_HEIGHT = 500;
 
@@ -52,7 +53,7 @@
     renderItems(0, endIndex);
 
     // init virtual scrolling
-    var vs = window['virtual-scrolling']({
+    var vs = window['virtual-scrolling'].default({
       nbItems: NB_ITEMS,
       rowHeight: ITEM_HEIGHT,
       viewportHeight: VIEWPORT_HEIGHT,
@@ -65,27 +66,27 @@
       scrollTop: 0
     };
     viewport.addEventListener('scroll', raf(function() {
-      console.log('called with scrollTop', viewport.scrollTop, 'old', previousState.scrollTop);
+
       var newState = vs({
         previousState: previousState,
         scrollTop: viewport.scrollTop
       });
 
+      console.log('sent', viewport.scrollTop, 'got', newState.scrollTop);
+
       // position the content inside the container
-      content.style.top = newState.scrollTop + 'px';
+      content.style.top = (newState.scrollTop - newState.scrollTop % ITEM_HEIGHT) + 'px';
 
       // reposition the scroll if it has been shifted (paging changed)
-      if (previousState.page !== newState.page) {
-        console.log('Fix from', viewport.scrollTop, 'to', newState.scrollTop, 'page', newState.page);
-        viewport.scrollTop = newState.scrollTop;        
-      }
+      // if (previousState.page !== newState.page) {
+      //   viewport.scrollTop = newState.scrollTop;        
+      // }
 
       // render the rows
-      var y = newState.scrollTop + newState.pageOffset;
+      var y = newState.scrollTop; // + newState.pageOffset;
       var startIndex = Math.max(0, Math.floor(y / ITEM_HEIGHT));
       var endIndex = Math.min(NB_ITEMS, Math.ceil((y + VIEWPORT_HEIGHT) / ITEM_HEIGHT)) - 1;  
       renderItems(startIndex, endIndex);
-      console.log('From', startIndex, 'to', endIndex);
 
       previousState = newState;
     }));
@@ -94,7 +95,7 @@
     function renderItems(fromIndex, toIndex) {
       var str = '';
       for (var i = fromIndex; i <= toIndex; i++) {
-        str += '<div>Row ' + (i+1) + '</div>';
+        str += '<div style="height: ' + ITEM_HEIGHT + 'px">Row ' + (i+1) + '</div>';
       }
       content.innerHTML = str;
     }

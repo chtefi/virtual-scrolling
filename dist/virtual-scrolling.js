@@ -90,6 +90,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var isNextPage = nextScrollTop >= nextPageTop;
 	  var isPreviousPage = nextScrollTop < currentPageTop;
 
+	  var scrollableToPage = scale({
+	    input: [0, layout.scrollableHeight],
+	    output: [0, layout.maxPage]
+	  });
+
 	  if (isNextPage) {
 	    return {
 	      newPage: previousState.page + 1,
@@ -106,7 +111,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	  // same page, no change
 	  return {
-	    newPage: previousState.page,
+	    newPage: scrollableToPage(newScrollTop),
 	    newScrollTop: newScrollTop
 	  };
 	}
@@ -121,11 +126,6 @@ return /******/ (function(modules) { // webpackBootstrap
 	 * @return {object}
 	 */
 	function onAbsoluteScroll(previousState, newScrollTop, layout) {
-	  var scrollableToVirtual = scale({
-	    input: [0, layout.scrollableHeight],
-	    output: [0, layout.totalItemsHeight]
-	  });
-
 	  var scrollableToPage = scale({
 	    input: [0, layout.scrollableHeight],
 	    output: [0, layout.maxPage]
@@ -134,7 +134,7 @@ return /******/ (function(modules) { // webpackBootstrap
 	  var newPage = scrollableToPage(newScrollTop);
 
 	  // there are 10 pages ?
-	  // the maxPage is something like 9.90 ? (the maxPage is the max start value
+	  // the maxPage is something like 9.90 ? (the maxPage is the _start_ page value
 	  // you can have when you go at 100% of the scrollbar)
 	  //
 	  // therefore, we are at the page: 9.90*0.34 = 3,366
@@ -265,7 +265,8 @@ return /******/ (function(modules) { // webpackBootstrap
 	exports.__esModule = true;
 	exports.getMaxSupportedCssHeight = getMaxSupportedCssHeight;
 	function getHeight(element) {
-	  return +window.getComputedStyle(element).getPropertyValue('height');
+	  // remove 'px' at the end then cast to integer
+	  return +window.getComputedStyle(element).getPropertyValue('height').slice(0, -2);
 	}
 
 	function getMaxSupportedCssHeight() {
